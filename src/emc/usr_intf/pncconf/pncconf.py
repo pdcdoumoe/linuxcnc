@@ -314,8 +314,12 @@ class App:
         self.INI.write_inifile(base)
         self.HAL.write_halfile(base)
         self.copy(base, "tool.tbl")
-        if self.warning_dialog(self._p.MESS_QUIT,False):
+        if self.warning_dialog(self._p.MESS_FINISH_QUIT,False):
             gtk.main_quit()
+
+    def save(self):
+        base = self.build_base()
+        self.d.save(base)
 
 # helper functions
 
@@ -447,6 +451,21 @@ class App:
                 return True
             else:
                 return False
+
+    def quit_dialog(self):
+        dialog = self.widgets.quitdialog
+        dialog.show_all()
+        result = dialog.run()
+        dialog.hide()
+        if result == gtk.RESPONSE_YES:
+            return True
+        elif result == gtk.RESPONSE_CANCEL:
+            return False
+        # save data then quit
+        else:
+            self.p.on_button_fwd_clicked(None)
+            self.save()
+            return True
 
     def show_help(self):
         helpfilename = os.path.join(self._p.HELPDIR, "%s"% self.d.help)
@@ -1189,7 +1208,7 @@ PNCconf will use internal firmware data"%self._p.FIRMDIR),True)
 
     def discover_mesacards(self):
         name, interface, address = self.get_discovery_meta()
-        if name is None: return
+        if name is None: return None
 
         if not name:
             name = '5i25'
@@ -1208,17 +1227,19 @@ PNCconf will use internal firmware data"%self._p.FIRMDIR),True)
         try:
             if 'ERROR' in lines[0]:
                 raise ValueError('Mesaflash Error')
+            elif 'root' in info:
+                raise ValueError('Mesaflash Error')
         except ValueError as err:
             text = err.args
             self.warning_dialog(text[0],True)
-            return
-        except:
-            self.warning_dialog('Unspecified Error with Mesaflash',True)
+            return None
+        except Exception as e:
+            print e
+            self.warning_dialog('Unspecified Error with Discovery option',True)
             return
         if 'No' in lines[0] and 'board found' in lines[0] :
             text = _("No board was found\n")
             self.warning_dialog(text,True)
-            print 'OOPS no board found!'
             return None
         return info
 
@@ -1246,11 +1267,14 @@ PNCconf will use internal firmware data"%self._p.FIRMDIR),True)
         else:
             board_command = '--device %s' %(devicename)
 
-        #cmd ="""pkexec "sh -c 'mesaflash %s';'mesaflash %s --sserial';'mesaflash %s --readhmid' " """%(board_command, board_command, board_command)
-        cmd =""" mesaflash -%s;mesaflash %s --sserial;mesaflash %s --readhmid  """%(board_command, board_command, board_command)
+        # PCI boards require sudo
+        cmd ="""pkexec sh -c 'mesaflash %s;mesaflash %s --sserial;mesaflash %s --readhmid'  """%(board_command, board_command, board_command)
+        print 'cmd=',cmd
 
         discover = subprocess.Popen([cmd], shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE )
         output, error = discover.communicate()
+        if error:
+            print 'mesaflash error',error
         if output == '':
             text = _("Discovery is  got an error\n\n Is mesaflash installed?\n\n %s"%error)
             self.warning_dialog(text,True)
@@ -1268,8 +1292,6 @@ PNCconf will use internal firmware data"%self._p.FIRMDIR),True)
         except:
             text = _("Discovery is  unavailable\n")
             self.warning_dialog(text,True)
-
-        print 'cmd=',cmd
         return output
 
     def parse_discovery(self,info,boardnum=0):
@@ -1452,6 +1474,7 @@ PNCconf will use internal firmware data"%self._p.FIRMDIR),True)
     # update all the firmware/boardname arrays and comboboxes
     def discovery_selection_update(self, info, bdnum):
         driver, boardname, firmname, path = self.parse_discovery(info,boardnum=bdnum)
+        print driver, boardname, firmname, path 
         boardname = 'Discovered:%s'% boardname
         firmdata = self.parse_xml( driver,boardname,firmname,path)
         self._p.MESA_FIRMWAREDATA.append(firmdata)
