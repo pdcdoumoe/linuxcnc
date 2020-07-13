@@ -296,8 +296,7 @@ class wizards:
         commands = self.iniButtonCode[bNum]
         if not commands: return
         if 'cut-recovery' in commands.lower() and hal.get_value('halui.program.is-paused'):
-            command = '{}/wizards/w_cut_recovery.py&'.format(os.getcwd())
-            msg = Popen('python ./wizards/w_cut_recovery.py',stdout=PIPE,stderr=PIPE, shell=True)
+            msg = Popen('python ./plasmac/wizards/w_cut_recovery.py',stdout=PIPE,stderr=PIPE, shell=True)
             print(msg.communicate()[0])
             hal.set_p('plasmac.cut-recovery', '0')
 
