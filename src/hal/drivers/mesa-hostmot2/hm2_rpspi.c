@@ -1009,7 +1009,7 @@ static int probe_board(hm2_rpspi_t *board) {
 		board->llio.ioport_connector_name[0] = "P1";
 		board->llio.ioport_connector_name[1] = "P2";
 		board->llio.ioport_connector_name[2] = "P3";
-		board->llio.num_leds = 2;
+		board->llio.num_leds = 8;
 		board->llio.fpga_part_number = "xc6slx9tq144";
 	} else {
 		int i;
